@@ -1,327 +1,180 @@
 /**
- * ArgumentParser
+ *  ArgParse
  * 
- *  Parses command-line arguments and options.
- * 
- * @Return: {Object} parsedArgs - Parsed arguments and options.
+ *    Parse out commands and functions
  */
 class ArgParse extends Listener {
   constructor() {
     super();
     this._commands = [];
+    this._default_flags = ['--help', '-h', '?'];
+    this.CMD = new CommandFunctions;
   }
 
   /**
-   * Add a command with associated options to the parser.
+   *  addCommand
+   * 
+   *    Add a command with associated options to the parser.
    * 
    * @Param: {String} command - The command name.
    * @Param: {Array} options - Array of Argument objects representing options.
    */
   addCommand(command, options) {
-    try{
-      this._commands.push({ command, options });
+    try {
+      this._commands.push({command, options});
     } catch (e) {
-      this.Logs(e.stack, 'ArgParse:addCommand')
+      this.Logs(e.stack, `ARG_Lexer:addCommand`);
       Logger.log(`Whoopsies! Error in addCommand: ${e.stack}`)
     }
   }
 
   /**
-   * Parse the input string and return an object with parsed arguments and options.
+   *  _parse
    * 
-   * @Param: {String} inputString - The input string to parse.
-   * @Return: {Object} parsedArgs - Parsed arguments and options.
+   *   Parse the input string and return an object with parsed arguments and options.
+   * 
+   * @Param: {String} input_String - The input string to parse.
+   * @Return: {Object} parsed_args - Parsed arguments and options.
    */
-  parse(inputString) {
-    try{
-      this.stdout.setValue(['Parsing commands...']);
-      const args = inputString.trim().split(/\s+/);
-      const parsedArgs = {};
+  _parse(input_String) {
+    this.stdout.setValue(['Parsing commands...']);
+    var args = input_String.trim().split(/\s+/);
 
-      for (const { command, options } of this._commands) {
-        const index = args.indexOf(command);
+    // [////////////////////]
+    // Lexer for strings passed in double quotes: "Hello, World!"
+    const start_token = args.findIndex(str => str.startsWith('"'));
+    const last_token = (args.length) - args.toReversed().findIndex(str => str.endsWith('"'));
+    const count = (input_String.match(/"/g) || []).length
 
-        if (index !== -1) {
-          parsedArgs.command = command;
-          parsedArgs.options = {};
+    // If the argument contains an odd number of double quotes, then it skips.
+    if (count % 2 == 0){
+      const compiled = args.slice(start_token, last_token).join(' ');
 
-          let currentOpt = null;
-
-          for (let i = 0; i < options.length; i++) {
-            const option = options[i];
-            const arg = args[index + i + 1];
-
-            if (arg && arg.startsWith('-')) {
-              // Handle -h as a special case for help
-              if (arg === '-h' || arg === '--help') {
-                parsedArgs.options.help = true;
-                continue;
-              }
-
-              currentOpt = arg.replace(/^-+/, '');
-
-              // Handle specific options for the sendmail command before the email address
-              if (command === 'sendmail' && ['a', 'auth', 'r', 'reset'].includes(currentOpt)) {
-                parsedArgs.options[currentOpt] = true;
-              }
-
-              const value = args[index + i + 2];
-
-              if (value !== undefined && !value.startsWith('-')) {
-                parsedArgs.options[currentOpt] = option.type(value);
-              } else {
-                if (option.required) {
-                  this.stdout.setValue(`Value for ${option.dest} is required.\nSee ${parsedArgs.command} --help`);
-                }
-
-                if (option.default !== undefined) {
-                  parsedArgs.options[currentOpt] = option.default;
-                }
-              }
-            } else if (currentOpt) {
-              // Check for a value for the currentOpt
-              parsedArgs.options[currentOpt] = option.type(arg);
-              currentOpt = null;
-            } else {
-              // Handle positional arguments
-              if (option.required) {
-                // Ensure that the positional argument is present
-                if (!arg) {
-                  this.stdout.setValue(`Value for ${option.dest} is required.\nSee ${parsedArgs.command} --help`);
-                } else {
-                  // Check for specific requirements for sendmail and getuser commands
-                  var command_values = {
-                    commands: ['checkdir', 'crypt'],
-                    values: {
-                      checkdir: ['max-depth', 'get-links', 'folder', 'ext'],
-                      crypt: ['encrypt', 'decrypt', 'algo', 'input']
-                      // inject: ['func', 'trigger', 'enum']
-                    }
-                  }
-                  if (command_values.commands.includes(command) && command_values.values[command].inclues(arg)) {
-                    this.stdout.setValue(`Invalid use of option ${arg} for ${parsedArgs.command} command.\nSee ${parsedArgs.command} --help`);
-                  } else {
-                    parsedArgs.options[option.dest] = option.type(arg);
-                  }
-                }
-              } else if (option.default !== undefined) {
-                // Use the default value if provided
-                parsedArgs.options[option.dest] = option.default;
-              }
-            }
-          }
-        }
-      }
-
-      return parsedArgs;
-    } catch (e) {
-      this.Logs(e.stack, 'ArgParse:parse')
-      Logger.log(`Whoopsies! Error in parse: ${e.stack}`)
+      args = [
+        ...args.slice(0, start_token),
+        compiled,
+        ...args.slice(last_token)
+      ];
     }
-  }
-}
+    // [////////////////////]
 
-/**
- * Represents an argument with specified properties.
- */
-class Argument {
-  constructor(dest, type, { required = false, default: defaultValue } = {}) {
-    this.dest = dest;
-    this.type = type || String;
-    this.required = required;
-    this.default = defaultValue;
-  }
-}
-
-/**
- * ProgCommands
- * 
- * Executes commands based on parsed arguments and options.
- */
-class ProgCommands extends Listener {
-  constructor(command, time) {
-    super();
-    this.command = command.command;
-    this.options = command.options || {};
-    this.time = time;
-    // this.chkdir_stdout_ = ''
-
-    Logger.log(`Command got from the cli: ${this.command}\nWith options: ${JSON.stringify(this.options, null, 2)}`);
-
-    // Default commands.
-    this.default = {
-      // nargs 0
-      help: {
-        help: 'Display this help menu and exit',
-        shorthelp: 'Display this help menu and exit'
-      },
-      // nargs 0
-      ping: {
-        help: 'Usage: ping\nReceive a pong! Check the delay, and response to server.',
-        shorthelp: 'Recieve a pong!'
-      },
-      // nargs 0
-      whoami: {
-        help: 'Usage: whoami\nReturn the user running the script.',
-        shorthelp: 'Returns the user running the script.'
-      },
-      // nargs 1
-      checkdir: {
-        opts: ['max-depth', 'get-links', 'folder', 'ext', 'parent', 'MIME'],
-        help: `Usage: checkdir [...OPTIONS]\nGet all contents in a specified directory.\n\nOptions:\n\t ext\t Specify file extensions to look for (mp4,mp3,pdf)\n\t MIME\t Specify file MIME types to look for (audio, video, text, model, image, font, application)\n\t max-depth\t print the total for a directory (or file) only if it is N or fewer levels below the command line argument.\n\t get-links\t Get the links to each file in the folder. Options: dl, file. (default: file)\n\t folder\t Specify the folder to run the check on.\n\t parent\t Start the scan from the parent folder.\n\nexample usage:\n   checkdir --max-depth 1 --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --ext txt,mp4\n   checkdir --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --MIME audio,text`,
-        shorthelp: `Get all contents in a specified directory.`
-      },
-      crypt: {
-        opts: ['encrypt', 'decrypt', 'algo', 'input'],
-        help: `Usage: crypt [...OPTIONS] <string>\nEncrypt or decrypt a string.\n\nOptions:\n\t algo\t Specify an encryption algorithm. (Default: AES-256)\n\t encrypt\t Encrypt a string.\n\t decrypt\t Decrypt an encrypted string.\n\nAlgorithms:\n\t AES\t Use the AES-256 algorithm.\n\t DES\t Use the DES encryption algorithm.\n\t RABBIT\t Use the Rabbit encryption algorithm.\n\t TRIPLEDES\t Use the TripleDES encryption algorithm.`,
-        shorthelp: `Encrypt or decrypt a string.`
-      }
-      // nargs 1
-      // inject: {
-      //   opts: ['func', 'trigger', 'enum'],
-      //   help: 'insft privilege',
-      //   shorthelp: 'insft privilege'
-      // }
+    const parsed_args = {};
+    const command_name = args[0];
+    // Quick n dirty
+    if (command_name == 'help') {
+      let help_command = this._commands.filter(command => command.command == 'help')
+      this.stdout.setValue([help_command[0].options.help])
+      return null;
     };
-  }
 
-  /**
-   * Execute the specified command based on parsed arguments and options.
-   * 
-   */
-  execute() {
-    try {
-      this.stdout.setValue([`Executing commands...`])
-      const validCommands = Object.keys(this.default);
+    /**
+     *  map_flag_values
+     * 
+     *    map the flags with the next value in the array.
+     */
+    const map_flag_values = (command_flags) => {
+      command_flags.forEach(flag => {
+        let flag_pos = args.indexOf(flag);
+        // Logger.log(`flag: ${flag} : ${flag_pos}\n${args}`)
+        flag = flag.replace(/^-+/, '');
 
-      if (this.command === 'help' || this.options.help) {
-        this.stdout.setValue([this._helpMenu()])
-      } else if (validCommands.includes(this.command)) {
+        // If the flag is in the user defined flags then map the flag to the next value if the value mapped is not a flag.
+        if (flag_pos != -1) parsed_args[flag] = command_flags.includes(args[flag_pos + 1]) ? null 
+          : args[flag_pos + 1] == (null || undefined) ? null : args[flag_pos + 1];
+      })
+    }
 
-        // Assign the function to the func property
-        //  Assigning static will run the functions prematurely.
-        this.default.ping.func = () => this._ping();
-        this.default.whoami.func = () => this._whoami();
-        this.default.checkdir.func = () => this._checkdir();
-        // this.default.inject.func = () => this._poison();
+    // Parse command flags, options.
+    this._commands.forEach(unparsed_command => {
+      // Command is first word.
+      const command_regex = new RegExp(`^${unparsed_command.command}$`);
+      const command_position = command_name.match(command_regex) || null;
 
-        // Validate flags passed and the opts
-        if (Object.keys(this.options).length > 0) {
-          this._validateOptions();
-        }
+      // if command is found/valid.
+      if (Boolean(command_position)) {
+        let has_options = unparsed_command.hasOwnProperty("options") && unparsed_command.options !== (null || undefined);
+        Logger.log(`args: ${args}\n${JSON.stringify(unparsed_command, null, 1)}\nHas options property: ${unparsed_command.hasOwnProperty('options')}\n${unparsed_command.options}\nHas options boolean: ${has_options}`)
 
-        // Check if the command requires positional arguments
-        if (this._requiresPositionalArguments(this.command)) {
-          this.stdout.setValue([`Checking args...`])
-          var command = this.default.checkdir.opts.some(option => this.options[option]);
-          // var injectCommand = this.default.inject.opts.some(option => this.options[option]);
-          const positionalArg = this.options.arg1 || command // || injectCommand;
+        // If there's flags and options set for the command then parse out options.
+        if (has_options) {
+          // Map all flags to the nth + 1 value
+          map_flag_values(unparsed_command.options.flags);
+          map_flag_values(this._default_flags);
 
-          if (!positionalArg) {
-            this.stdout.setValue([`Positional argument is required for the ${this.command} command.\nSee \`${this.command} --help' for help`])
-            return;
+          // If the input has the `--help` flag then add the command's help.
+          if (Boolean(Object.keys(parsed_args).includes('help'))) parsed_args.help = unparsed_command.options.help;
+
+          // If the command has no flags, it executes without flags.
+          if (unparsed_command.options.flags.length == 0) {
+            parsed_args['no_flag_command'] = true
+          } else if (Object.keys(parsed_args).length == 0 && unparsed_command.options.flags.length > 0) {
+            parsed_args['needs_flag_command'] = true;
           }
         }
+      }
+    });
+    // Logger.log(parsed_args.hasOwnProperty('no_flag_command'))
+    // Logger.log(parsed_args.hasOwnProperty('needs_flag_command'))
+    // Logger.log(Object.keys(parsed_args))
 
-        // Call the assigned function
-        this.stdout.setValue([`Executing command...`]);
-
-        if (this.command == 'checkdir') {
-          let directory = this.default[this.command].func();
-          let this_day = Date.now()
-          DriveApp.createFile(`checkdir:${this_day}.txt`, directory);
-          // DriveApp.createFile(`checkdir:${this_day}.txt`, this.chkdir_stdout_);
-        } else {
-          this.default[this.command].func();
-        }
+    // If the command doesn't need flags, or if the command needs flags throw error.
+    if (Object.keys(parsed_args) - 2 == 0 && !parsed_args.hasOwnProperty('no_flag_command') && !parsed_args.hasOwnProperty('needs_flag_command')) {
+      Logger.log(`len: ${Object.keys(parsed_args).length}\n${Object.keys(parsed_args)}\n${parsed_args.hasOwnProperty('needs_flag_command')}`)
+      if (parsed_args.hasOwnProperty('needs_flag_command')) {
+        this.stdout.setValue([`Command \`${command_name}' has no flags specified, see \`${command_name} --help'`])
       } else {
-        this.stdout.setValue([this._helpMenu()])
+        this.stdout.setValue([`Command \`${command_name}' not found.`])
       }
-    } catch (e) {
-      this.Logs(e.stack, 'ProgCommands:execute')
-      Logger.log(`Whoops! Execute failed: ${e.stack}`);
+      return null;
     }
+
+    parsed_args['command'] = command_name;
+
+    return parsed_args;
   }
 
   /**
-   * Display help information based on parsed arguments and options.
-   * If a specific command is provided, display help for that command; otherwise, show the general help menu.
-   */
-  _helpMenu() {
-    try {
-      this.stdout.setValue(['Showing help...'])
-      if (this.subargs && this.subargs.length > 0) {
-        const specifiedCommand = this.subargs[0];
-
-        if (this.default[specifiedCommand]) {
-          // Display help for the specified command
-          const helpMessage = this.default[specifiedCommand].help;
-          return helpMessage;
-        } else {
-          return `Invalid command specified for help: ${specifiedCommand}`;
-        }
-      } else if (this.options.help) {
-        // Display help for the specified command
-        const helpMessage = this.default[this.command].help;
-        return helpMessage;
-      } else {
-        // Display general help menu
-        const maxCmdLength = Math.max(...Object.keys(this.default).map(cmd => cmd.length));
-
-        const cmdLines = Object.keys(this.default).map(cmd => {
-          const trimmedCmd = cmd.trim();
-          const paddedCmd = trimmedCmd.padEnd(maxCmdLength + 4);
-          return `\t${paddedCmd}${this.default[cmd].shorthelp}`;
-        });
-
-        return `These shell commands are defined internally are are not case sensitive.\n\n${cmdLines.join('\n')}\n\nType \`<command> --help' to display more information about that command.\nex.\n\t ping --help\n\t checkdir --help`;
-      }
-    } catch (e) {
-      this.Logs(e.stack, 'ProgCommands:_helpMenu');
-      Logger.log(`Whoops! _helpMenu failed: ${e.stack}`)
-    }
-  }
-
-  /**
-   * Validate the options against accepted flags for the specified command.
-   * Throws an error if an invalid flag is encountered.
-   */
-  _validateOptions() {
-    try{
-      this.stdout.setValue(['Validating args...'])
-      const acceptedFlags = this.default[this.command].opts;
-
-      if (acceptedFlags) {
-        const parsedFlags = Object.keys(this.options);
-
-        parsedFlags.forEach(flag => {
-          if (!acceptedFlags.includes(flag)) {
-            this.stdout.setValue([`Invalid flag: ${flag} for command ${this.command}.\nSee \`${this.command} --help' for help`])
-          }
-        });
-      }
-    } catch (e) {
-      this.Logs(e.stack, 'ProgCommands:_validateOptions')
-      Logger.log(`Whoopsies! Error in _validateOptions: ${e.stack}`)
-    }
-  }
-
-  /**
-   * Check if the specified command requires positional arguments.
+   *  _execute
    * 
-   * @param {String} command - The command to check.
-   * @return {Boolean} - True if the command requires positional arguments, false otherwise.
+   *    Execute command and arguments
+   * 
+   * @Param: {Object} command_args - Object output from _parse
    */
-  _requiresPositionalArguments(command) {
-    return ['inject', 'checkdir'].includes(command);
+  _execute(command_args) {
+    const command = command_args.command;
+    const flags = Object.keys(command_args).filter(flags => flags != 'command')
+
+    // If the `help' flag is present, then show the help menu for the command.
+    const display_help = flags.some(flag => this._default_flags.map(help_flags => help_flags.replace(/^-+/, '')).includes(flag))
+    if (display_help) {
+      this.stdout.setValue([command_args.help])
+      return null;
+    }
+
+    // If the command is valid but there's no function yet.
+    if (command in this.CMD == (null || undefined || false)) {
+      Logger.log(`Command \`${command}' is valid, though no function exists. Check your input or see \`help' for a list of commands.`)
+      this.stdout.setValue([`Command \`${command}' is valid, though no function exists. Check your input or see \`help' for a list of commands.`]);
+      return null;
+    }
+
+    // Execute command.
+    this.CMD[command](command_args);
+  }
+}
+
+class CommandFunctions extends Listener {
+  constructor() {
+    super();
+    this.time = Date.now()
   }
 
   /**
-   *  Ping
-   * 
+   *  ping
+   *
    *    Pong!
    */
-  _ping() {
+  ping(_) {
     try{
       const time = parseInt(Date.now());
       this.stdout.setValue([`Pong! With a time of: ${(parseInt(time) - parseInt(this.time)) / 1000}ms`])
@@ -332,29 +185,29 @@ class ProgCommands extends Listener {
   }
 
   /**
-   *  _whoami
+   *  whoami
    * 
    *    Get the authoritative user running the script.
    */
-  _whoami() {
+  whoami(_) {
     try{
-      this.stdout.setValue([String(this.effective_user)]);
+      this.stdout.setValue([String(this.effective_user)])
     } catch (e) {
-      this.Logs(e.stack, 'ProgCommands:_whoami')
-      Logger.log(`Whoopsies! Error in _whoami: ${e.stack}`)
+      this.Logs(e.stack, 'CommandFunctions:whoami');
+      Logger.log(`Whoopsies! Error in whoami: ${e.stack}`);
     }
   }
 
   /**
-   *  _checkdir
+   *  checkdir
    * 
    *    Check a directory for files
    */
-  _checkdir(folder_id) {
+  checkdir(command_args) {
+    Logger.log(JSON.stringify(command_args, null, 2))
     try {
       const folder_id_regex = /\/folders\/([a-zA-Z0-9_-]+)/;
-      // const file_id_regex = /\/d\/([a-zA-Z0-9_-]+)/;
-      const args_got = this.options;
+      const args_got = command_args;
       var link = 'file';
 
       // Set link option
@@ -368,19 +221,17 @@ class ProgCommands extends Listener {
         return;
       }
 
-      if (!folder_id) {
-        const folder_id_link_match = args_got.folder.match(folder_id_regex);
-        const hash_id_match = args_got.folder.match(/[a-zA-Z0-9_-]+/);
+      // Grab folder hash
+      const folder_id_link_match = args_got.folder.match(folder_id_regex);
+      const hash_id_match = args_got.folder.match(/[a-zA-Z0-9_-]+/);
 
-        if ((!folder_id_link_match || folder_id_link_match.length < 2) && !hash_id_match) {
-          Logger.log("No folder ID found in the provided link.");
-          this.stdout.setValue(["No folder ID found in the provided link."])
-          return;
-        }
-
-        folder_id = folder_id_link_match ? folder_id_link_match[1] : hash_id_match;
+      if ((!folder_id_link_match || folder_id_link_match.length < 2) && !hash_id_match) {
+        Logger.log("No folder ID found in the provided link.");
+        this.stdout.setValue(["No folder ID found in the provided link."])
+        return;
       }
 
+      let folder_id = folder_id_link_match ? folder_id_link_match[1] : hash_id_match;
       var folder = DriveApp.getFolderById(folder_id);
 
       // If the parent flag is set, traverse to parent folder.
@@ -478,7 +329,6 @@ class ProgCommands extends Listener {
 
       // Iterate through parent folder content
       var folder_contents = get_from_directory(folder_folders, 'folder')
-      console.error('')
       var file_contents = get_from_directory(folder_files)
 
       // Logger.log(get_from_directory(DriveApp.continueFileIterator(folder_files_token)))
@@ -536,9 +386,12 @@ class ProgCommands extends Listener {
           })
         })
       })
-
       Logger.log(display)
-      return display
+
+      let this_day = Date.now()
+      let create_file = DriveApp.createFile(`checkdir:${this_day}.txt`, display);
+
+      this.stdout.setValue([`=HYPERLINK("${create_file.getUrl()}", "Created file ${create_file.getName()}")`])
     } catch (e) {
       this.Logs(e.stack, 'ProgCommands:_checkdir');
       Logger.log(`Whoopsies! Error in _checkdir: ${e.stack}`);
@@ -547,38 +400,60 @@ class ProgCommands extends Listener {
   }
 }
 
+class Arguments {
+  constructor({ flags = [], help = ''} = {}) {
+    // Add longhand property if it doesn't exist.
+    this.flags = flags.map(flag => { return !flag.match(/^-+/) ? `--${flag}` : flag });
+    this.help = help || 'No help available for command.'
+  }
+}
+
+// https://man7.org/linux/man-pages/man3/getopt.3.html
+// https://github.com/bfgroup/Lyra/tree/develop
+// https://github.com/gcc-mirror/gcc/blob/master/libiberty/getopt.c
+function testLexer () {
+  const arg = new ArgParse;
+
+  arg.addCommand('help',
+    new Arguments({help: `These shell commands are defined internally are are not case sensitive.
+
+        help        Display this help menu and exit
+        ping        Recieve a pong!
+        whoami      Returns the user running the script.
+        checkdir    Get all contents in a specified directory.
+        crypt       Encrypt or decrypt a string.
+
+Type \`<command> --help' to display more information about that command:
+         ping --help
+         checkdir --help`})
+  )
+
+  arg.addCommand('ping',
+    new Arguments({help: 'Usage: ping\nReceive a pong! Check the delay, and response to server.'})
+  )
+
+  arg.addCommand('whoami',
+    new Arguments({help: 'Usage: whoami\nReturn the user running the script.'})
+  )
+
+  arg.addCommand('checkdir',
+    new Arguments({ flags: ['folder', 'max-depth', 'link', 'ext', 'parent', 'MIME'], help: 'Usage: checkdir [...OPTIONS]\nGet all contents in a specified directory.\n\nOptions:\n\t ext\t Specify file extensions to look for (mp4,mp3,pdf)\n\t MIME\t Specify file MIME types to look for (audio, video, text, model, image, font, application)\n\t max-depth\t print the total for a directory (or file) only if it is N or fewer levels below the command line argument.\n\t link\t Get the links to each file in the folder. Options: (dl, file). (default: file)\n\t folder\t Specify the folder to run the check on.\n\t parent\t Start the scan from the parent folder.\n\nexample usage:\n   checkdir --max-depth 1 --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --ext txt,mp4\n   checkdir --folder 11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0 --MIME audio,text' })
+  )
+
+  arg.addCommand('crypt',
+    new Arguments({ flags: ['algo', 'encrypt', 'decrypt', 'key'], help: `Usage: crypt [...OPTIONS]\nEncrypt a string or file with a specified algorithm.\n\nOptions:\n\t algo\t Specify an algorithm to use. (AES)\n\t encrypt\t Encrypt the String or File.\n\t decrypt\t Decrypt the String or File.\n\t key\t The passphrase used to encrypt or decrypt.`})
+  )
+
+  // const inputString = 'ping --url --host 127.0.0.1';
+  // const inputString = 'crypt --algo aes --encrypt "Hello, World!" --key P455W0RD123';
+  const inputString = "checkdir --folder 1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8 --parent --MIME audio";
+  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --ext .txt,.pdf";
+  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --parent --MIME audio";
+  // const inputString = "checkdir";
+  // const inputString = 'whoami';
 
 
-function test() {
-  const parser = new ArgParse
-
-  parser.addCommand("checkdir", [
-    new Argument("arg1"),
-    new Argument("arg2"),
-    new Argument("arg3"),
-    new Argument("arg4"),
-    new Argument("arg5"),
-    new Argument("arg6"),
-    new Argument("arg7"),
-    new Argument("arg8"),
-    new Argument("arg9"),
-    new Argument("arg10"),
-  ]);
-
-  const input = '└─│├';
-
-  const inputString = "checkdir --folder https://drive.google.com/drive/folders/1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8?usp=drive_link --MIME audio --parent";
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8?usp=drive_link";
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/1PebYcpr47qagmUr-JpkMkaqgKPTQbOZM?usp=sharing --parent";
-  // const inputString = "checkdir --folder 1PebYcpr47qagmUr-JpkMkaqgKPTQbOZM";
-
-  const parsedArgs = parser.parse(inputString);
-  const executor = new ProgCommands(parsedArgs);
-  executor.execute()
-
-  // Array.from(input).forEach(char => {
-  //   Logger.log(`CHAR: ${char} : ${char.charCodeAt(0)}`);
-  // })
-
-  // Logger.log(`${String.fromCodePoint(9492)}${String.fromCodePoint(9472)}`)
+  const parsed_args = arg._parse(inputString);
+  // Logger.log(JSON.stringify(parsed_args, null, 2));
+  parsed_args != null ? arg._execute(parsed_args) : [];
 }
