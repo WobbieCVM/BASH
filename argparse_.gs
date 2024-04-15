@@ -167,6 +167,8 @@ class CommandFunctions extends Listener {
   constructor() {
     super();
     this.time = Date.now()
+    this.display = 'Append folder hash to this url to peek inside:\nhttps://drive.google.com/drive/folders/\n\nDirectory tree:\n.';
+    this.commandArgs = '';
   }
 
   /**
@@ -199,202 +201,306 @@ class CommandFunctions extends Listener {
   }
 
   /**
-   *  checkdir
+   *  tree
    * 
    *    Check a directory for files
+   * 
+   * @Param: {Object} cmdARGS - Command arguments passed
    */
-  checkdir(command_args) {
-    Logger.log(JSON.stringify(command_args, null, 2))
+  // https://www.geeksforgeeks.org/directory-traversal-tools-in-python/
+  // https://github.com/kddnewton/tree/blob/main/tree.js
+  tree(cmdARGS) {
+    const MIMETYPES = {
+      "application":{"type":["vnd.lotus-1-2-3","x-krita","x-7z-compressed","octet-stream","x-authorware-bin","x-authorware-map","x-authorware-seg","x-abiword","vnd.americandynamics.acc","x-ace-compressed","vnd.acucobol","vnd.acucorp","vnd.audiograph","x-font-type1","vnd.ibm.modcap","postscript","vnd.adobe.air-application-installer-package+zip","vnd.amiga.ami","vnd.android.package-archive","x-ms-application","vnd.lotus-approach","pgp-signature","vnd.accpac.simply.aso","atom+xml","atomcat+xml","atomsvc+xml","vnd.antix.game-component","applixware","vnd.airzip.filesecure.azf","vnd.airzip.filesecure.azs","vnd.amazon.ebook","x-msdownload","x-bcpio","x-font-bdf","vnd.syncml.dm+wbxml","vnd.fujitsu.oasysprs","vnd.bmi","vnd.framemaker","vnd.previewsystems.box","x-bzip2","x-bzip","vnd.clonk.c4group","vnd.ms-cab-compressed","vnd.curl.car","vnd.ms-pki.seccat","x-director","ccxml+xml","vnd.contact.cmsg","x-netcdf","vnd.mediastation.cdkey","vnd.chemdraw+xml","vnd.cinderella","pkix-cert","x-chat","vnd.ms-htmlhelp","vnd.kde.kchart","vnd.anser-web-certificate-issue-initiation","vnd.ms-artgalry","vnd.claymore","java-vm","vnd.crick.clicker.keyboard","vnd.crick.clicker.palette","vnd.crick.clicker.template","vnd.crick.clicker.wordbank","vnd.crick.clicker","x-msclip","vnd.cosmocaller","vnd.yellowriver-custom-menu","vnd.rim.cod","vnd.debian.binary-package","wasm","x-cpio","mac-compactpro","x-mscardfile","pkix-crl","x-x509-ca-cert","x-csh","vnd.commonspace","cu-seeme","prs.cww","vnd.mobius.daf","vnd.fdsn.seed","davmount+xml","vnd.oma.dd2+xml","vnd.fujixerox.ddd","x-debian-package","vnd.dreamfactory","vnd.mobius.dis","vnd.dna","msword","vnd.ms-word.document.macroenabled.12","vnd.openxmlformats-officedocument.wordprocessingml.document","vnd.ms-word.template.macroenabled.12","vnd.openxmlformats-officedocument.wordprocessingml.template","vnd.osgi.dp","vnd.dpgraph","x-dtbook+xml","xml-dtd","x-dvi","vnd.spotfire.dxp","ecmascript","vnd.novadigm.edm","vnd.novadigm.edx","vnd.picsel","vnd.pg.osasli","emma+xml","vnd.ms-fontobject","epub+zip","vnd.eszigno3+xml","vnd.epson.esf","vnd.novadigm.ext","andrew-inset","vnd.ezpix-album","vnd.ezpix-package","vnd.fdf","vnd.denovo.fcselayout-link","vnd.fujitsu.oasysgp","x-xfig","vnd.micrografx.flo","vnd.kde.kivio","vnd.frogans.fnc","vnd.fsc.weblaunch","vnd.fluxtime.clip","vnd.anser-web-funds-transfer-initiation","vnd.fuzzysheet","vnd.groove-account","vnd.dynageo","vnd.geometry-explorer","vnd.geogebra.file","vnd.geogebra.tool","vnd.groove-help","vnd.groove-identity-message","vnd.gmx","x-gnumeric","vnd.flographit","vnd.grafeq","srgs","vnd.groove-injector","srgs+xml","x-font-ghostscript","x-gtar","vnd.groove-tool-message","x-gzip","gzip","vnd.hbci","vnd.gerber","x-hdf","winhlp","vnd.hp-hpgl","vnd.hp-hpid","vnd.hp-hps","mac-binhex40","vnd.kenameaapp","vnd.yamaha.hv-dic","vnd.yamaha.hv-voice","vnd.yamaha.hv-script","vnd.iccprofile","vnd.shana.informed.formdata","vnd.igloader","vnd.micrografx.igx","vnd.shana.informed.interchange","vnd.accpac.simply.imp","vnd.ms-ims","vnd.shana.informed.package","vnd.ibm.rights-management","vnd.irepository.package+xml","vnd.shana.informed.formtemplate","vnd.immervision-ivp","vnd.immervision-ivu","vnd.jam","java-archive","vnd.jisp","vnd.hp-jlyt","x-java-jnlp-file","vnd.joost.joda-archive","x-trash","x-shellscript","json","vnd.kde.karbon","vnd.kde.kformula","vnd.kidspiration","x-killustrator","vnd.google-earth.kml+xml","vnd.google-earth.kmz","vnd.kinar","vnd.kde.kontour","vnd.kde.kpresenter","vnd.kde.kspread","vnd.kahootz","vnd.kde.kword","x-latex","vnd.llamagraphics.life-balance.desktop","vnd.llamagraphics.life-balance.exchange+xml","vnd.hhe.lesson-player","vnd.route66.link66+xml","lost+xml","vnd.ms-lrm","vnd.frogans.ltf","vnd.lotus-wordpro","x-msmediaview","mathematica","vnd.ecowin.chart","mathml+xml","vnd.sqlite3","x-sqlite3","vnd.mobius.mbk","mbox","vnd.medcalcdata","vnd.mcd","x-msaccess","vnd.mfmp","vnd.proteus.magazine","vnd.mif","vnd.dolby.mlp","vnd.chipnuts.karaoke-mmd","vnd.smaf","x-msmoney","x-mobipocket-ebook","x-iso9660-image","yaml","mp4","vnd.mophun.certificate","vnd.apple.installer+xml","vnd.blueice.multipass","vnd.mophun.application","vnd.ms-project","vnd.ibm.minipay","vnd.mobius.mqy","marc","mediaservercontrol+xml","vnd.fdsn.mseed","vnd.mseq","vnd.epson.msf","vnd.mobius.msl","vnd.muvee.style","vnd.musician","vnd.recordare.musicxml+xml","vnd.mfer","mxf","vnd.recordare.musicxml","xv+xml","vnd.triscape.mxs","vnd.nokia.n-gage.symbian.install","x-dtbncx+xml","vnd.nokia.n-gage.data","vnd.neurolanguage.nlu","vnd.enliven","vnd.noblenet-directory","vnd.noblenet-sealer","vnd.noblenet-web","vnd.lotus-notes","vnd.fujitsu.oasys2","vnd.fujitsu.oasys3","vnd.fujitsu.oasys","x-msbinder","oda","vnd.oasis.opendocument.database","vnd.oasis.opendocument.chart","vnd.oasis.opendocument.formula","vnd.oasis.opendocument.formula-template","vnd.oasis.opendocument.graphics","vnd.oasis.opendocument.image","vnd.oasis.opendocument.presentation","vnd.oasis.opendocument.spreadsheet","vnd.oasis.opendocument.text","ogg","onenote","oebps-package+xml","vnd.palm","vnd.lotus-organizer","vnd.yamaha.openscoreformat","vnd.yamaha.openscoreformat.osfpvg+xml","vnd.oasis.opendocument.chart-template","x-redhat-package-manager","x-perl","x-font-otf","vnd.oasis.opendocument.graphics-template","vnd.oasis.opendocument.text-web","vnd.oasis.opendocument.image-template","vnd.oasis.opendocument.text-master","vnd.oasis.opendocument.presentation-template","vnd.oasis.opendocument.spreadsheet-template","vnd.oasis.opendocument.text-template","vnd.openofficeorg.extension","pkcs10","x-pkcs12","x-pkcs7-certificates","pkcs7-mime","x-pkcs7-certreqresp","pkcs7-signature","vnd.powerbuilder6","x-font-pcf","vnd.hp-pcl","vnd.hp-pclxl","vnd.curl.pcurl","pdf","font-tdpfr","x-chess-pgn","pgp-encrypted","pkixcmp","pkix-pkipath","vnd.3gpp.pic-bw-large","vnd.mobius.plc","vnd.pocketlearn","pls+xml","vnd.ctc-posml","vnd.macports.portpkg","vnd.ms-powerpoint","vnd.ms-powerpoint.template.macroenabled.12","vnd.openxmlformats-officedocument.presentationml.template","vnd.ms-powerpoint.addin.macroenabled.12","vnd.cups-ppd","vnd.ms-powerpoint.slideshow.macroenabled.12","vnd.openxmlformats-officedocument.presentationml.slideshow","vnd.ms-powerpoint.presentation.macroenabled.12","vnd.openxmlformats-officedocument.presentationml.presentation","vnd.lotus-freelance","pics-rules","prql","vnd.3gpp.pic-bw-small","x-font-linux-psf","vnd.pvi.ptid1","x-mspublisher","vnd.3gpp.pic-bw-var","vnd.3m.post-it-notes","x-python-code","vnd.epson.quickanime","vnd.intu.qbo","vnd.intu.qfx","vnd.publishare-delta-tree","vnd.quark.quarkxpress","vnd.rar","x-rar-compressed","vnd.ipunplugged.rcprofile","rdf+xml","vnd.data-vision.rdz","vnd.businessobjects","x-dtbresource+xml","reginfo+xml","resource-lists+xml","resource-lists-diff+xml","vnd.rn-realmedia","vnd.jcp.javame.midlet-rms","relax-ng-compact-syntax","x-rpm","vnd.nokia.radio-presets","vnd.nokia.radio-preset","sparql-query","rls-services+xml","rsd+xml","rss+xml","rtf","vnd.yamaha.smaf-audio","sbml+xml","vnd.ibm.secure-container","x-msschedule","vnd.lotus-screencam","scvp-cv-request","scvp-cv-response","vnd.stardivision.draw","vnd.stardivision.calc","vnd.stardivision.impress","vnd.solent.sdkm+xml","sdp","vnd.stardivision.writer","vnd.seemail","vnd.sema","vnd.semd","vnd.semf","java-serialized-object","set-payment-initiation","set-registration-initiation","vnd.hydrostatix.sof-data","vnd.spotfire.sfs","vnd.stardivision.writer-global","x-sh","x-shar","shf+xml","vnd.wap.sic","vnd.symbian.install","x-stuffit","x-stuffitx","vnd.koan","vnd.wap.slc","vnd.ms-powerpoint.slide.macroenabled.12","vnd.openxmlformats-officedocument.presentationml.slide","vnd.epson.salt","vnd.stardivision.math","smil+xml","x-font-snf","vnd.yamaha.smaf-phrase","x-futuresplash","scvp-vp-response","scvp-vp-request","x-wais-source","sparql-results+xml","vnd.kodak-descriptor","vnd.epson.ssf","ssml+xml","vnd.sun.xml.calc.template","vnd.sun.xml.draw.template","vnd.wt.stf","vnd.sun.xml.impress.template","hyperstudio","vnd.ms-pki.stl","vnd.pg.format","vnd.sun.xml.writer.template","vnd.sus-calendar","x-sv4cpio","x-sv4crc","vnd.svd","x-shockwave-flash","vnd.arastra.swi","vnd.sun.xml.calc","vnd.sun.xml.draw","vnd.sun.xml.writer.global","vnd.sun.xml.impress","vnd.sun.xml.math","vnd.sun.xml.writer","vnd.tao.intent-module-archive","x-tar","vnd.3gpp2.tcap","x-tcl","vnd.smart.teacher","x-tex","x-texinfo","x-tex-tfm","vnd.tmobile-livetv","x-bittorrent","vnd.groove-tool-template","vnd.trid.tpt","vnd.trueapp","x-msterminal","x-font-ttf","vnd.simtech-mindmapper","vnd.genomatix.tuxedo","vnd.mobius.txf","vnd.ufdl","vnd.umajin","vnd.unity","vnd.uoml+xml","x-ustar","vnd.uiq.theme","x-cdlink","vnd.groove-vcard","vnd.vcx","vnd.visionary","vnd.visio","vnd.vsf","voicexml+xml","x-doom","vnd.criticaltools.wbs+xml","vnd.wap.wbxml","vnd.ms-works","x-ms-wmd","x-msmetafile","vnd.wap.wmlc","vnd.wap.wmlscriptc","x-ms-wmz","vnd.wordperfect","vnd.ms-wpl","vnd.wqd","x-mswrite","wsdl+xml","wspolicy+xml","vnd.webturbo","vnd.hzn-3d-crossword","x-silverlight-app","vnd.xara","x-ms-xbap","vnd.fujixerox.docuworks.binder","vnd.syncml.dm+xml","vnd.adobe.xdp+xml","vnd.fujixerox.docuworks","xenc+xml","patch-ops-error+xml","vnd.adobe.xfdf","vnd.xfdl","xhtml+xml","vnd.ms-excel","vnd.ms-excel.addin.macroenabled.12","vnd.ms-excel.sheet.binary.macroenabled.12","vnd.ms-excel.sheet.macroenabled.12","vnd.openxmlformats-officedocument.spreadsheetml.sheet","vnd.ms-excel.template.macroenabled.12","vnd.openxmlformats-officedocument.spreadsheetml.template","xml","vnd.olpc-sugar","xop+xml","x-xpinstall","vnd.is-xpr","vnd.ms-xpsdocument","vnd.intercon.formnet","xslt+xml","vnd.syncml+xml","xspf+xml","vnd.mozilla.xul+xml","vnd.zzazz.deck+xml","zip","x-zip-compressed","zip-compressed","vnd.zul","vnd.handheld-entertainment+xml"],"extension":[".123",".kra",".krz",".7z",".a",".bin",".bpk",".deploy",".dist",".distz",".dmg",".dms",".dump",".elc",".lha",".lrf",".lzh",".o",".obj",".pkg",".so",".aab",".u32",".vox",".x32",".aam",".aas",".abw",".acc",".ace",".acu",".acutc",".atc",".aep",".afm",".pfa",".pfb",".pfm",".afp",".list3820",".listafp",".ai",".eps",".ps",".air",".ami",".apk",".application",".apr",".asc",".sig",".aso",".atom",".atomcat",".atomsvc",".atx",".aw",".azf",".azs",".azw",".bat",".com",".dll",".exe",".msi",".bcpio",".bdf",".bdm",".bh2",".bmi",".book",".fm",".frame",".maker",".box",".boz",".bz2",".bz",".c4d",".c4f",".c4g",".c4p",".c4u",".cab",".car",".cat",".cct",".cst",".cxt",".dcr",".dir",".dxr",".fgd",".swa",".w3d",".ccxml",".cdbcmsg",".cdf",".nc",".cdkey",".cdxml",".cdy",".cer",".chat",".chm",".chrt",".cii",".cil",".cla",".class",".clkk",".clkp",".clkt",".clkw",".clkx",".clp",".cmc",".cmp",".cod",".deb",".udeb",".wasm",".cpio",".cpt",".crd",".crl",".crt",".der",".csh",".csp",".cu",".cww",".daf",".dataless",".seed",".davmount",".dd2",".ddd",".deb",".udeb",".dfac",".dis",".dna",".doc",".dot",".wiz",".docm",".docx",".dotm",".dotx",".dp",".dpg",".dtb",".dtd",".dvi",".dxp",".ecma",".edm",".edx",".efif",".ei6",".emma",".eot",".epub",".es3",".et3",".esf",".ext",".ez",".ez2",".ez3",".fdf",".fe_launch",".fg5",".fig",".flo",".flw",".fnc",".fsc",".ftc",".fti",".fzs",".gac",".geo",".gex",".gre",".ggb",".ggt",".ghf",".gim",".gmx",".gnumeric",".gph",".gqf",".gqs",".gram",".grv",".grxml",".gsf",".gtar",".gtm",".gz",".tgz",".gz",".tgz",".hbci",".gbr",".hdf",".hlp",".hpgl",".hpid",".hps",".hqx",".htke",".hvd",".hvp",".hvs",".icc",".icm",".ifm",".igl",".igx",".iif",".imp",".ims",".ipk",".irm",".irp",".itp",".ivp",".ivu",".jam",".jar",".jisp",".jlt",".jnlp",".joda",".sh",".json",".karbon",".kfo",".kia",".kil",".kml",".kmz",".kne",".knp",".kon",".kpr",".kpt",".ksp",".ktr",".ktz",".kwd",".kwt",".latex",".lbd",".lbe",".les",".link66",".lostxml",".lrm",".ltf",".lwp",".m13",".m14",".mvb",".ma",".mb",".nb",".mag",".mathml",".mml",".db",".sqlite",".sqlite3",".db-wal",".sqlite-wal",".db-shm",".sqlite-shm",".db",".sqlite",".sqlite3",".db-wal",".sqlite-wal",".db-shm",".sqlite-shm",".mbk",".mbox",".mc1",".mcd",".mdb",".mfm",".mgz",".mif",".mlp",".mmd",".mmf",".mny",".mobi",".prc",".iso",".isoimg",".cdr",".yaml",".yml",".mp4s",".mpc",".mpkg",".mpm",".mpn",".mpp",".mpt",".mpy",".mqy",".mrc",".mscml",".mseed",".mseq",".msf",".msl",".msty",".mus",".musicxml",".mwf",".mxf",".mxl",".mxml",".xhvml",".xvm",".xvml",".mxs",".n-gage",".ncx",".ngdat",".nlu",".nml",".nnd",".nns",".nnw",".nsf",".oa2",".oa3",".oas",".obd",".oda",".odb",".odc",".odf",".odft",".odg",".odi",".odp",".ods",".odt",".ogx",".onepkg",".onetmp",".onetoc",".onetoc2",".opf",".oprc",".pdb",".pqa",".org",".osf",".osfpvg",".otc",".rpa",".pm",".pl",".otf",".otg",".oth",".oti",".otm",".otp",".ots",".ott",".oxt",".p10",".p12",".pfx",".p7b",".spc",".p7c",".p7m",".p7r",".p7s",".pbd",".pcf",".pcl",".pclxl",".pcurl",".pdf",".pfr",".pgn",".pgp",".pki",".pkipath",".plb",".plc",".plf",".pls",".pml",".portpkg",".pot",".ppa",".pps",".ppt",".pwz",".potm",".potx",".ppam",".ppd",".ppsm",".ppsx",".pptm",".pptx",".pre",".prf",".prql",".psb",".psf",".ptid",".pub",".pvb",".pwn",".pyc",".pyo",".qam",".qbo",".qfx",".qps",".qwd",".qwt",".qxb",".qxd",".qxl",".qxt",".rar",".rar",".rcprofile",".rdf",".rdz",".rep",".res",".rif",".rl",".rld",".rm",".rms",".rnc",".rpm",".rpss",".rpst",".rq",".rs",".rsd",".rss",".xml",".rtf",".saf",".sbml",".sc",".scd",".scm",".scq",".scs",".sda",".sdc",".sdd",".sdkd",".sdkm",".sdp",".sdw",".vor",".see",".sema",".semd",".semf",".ser",".setpay",".setreg",".sfd-hdstx",".sfs",".sgl",".sh",".shar",".shf",".sic",".sis",".sisx",".sit",".sitx",".skd",".skm",".skp",".skt",".slc",".sldm",".sldx",".slt",".smf",".smi",".smil",".snf",".spf",".spl",".spp",".spq",".src",".srx",".sse",".ssf",".ssml",".stc",".std",".stf",".sti",".stk",".stl",".str",".stw",".sus",".susp",".sv4cpio",".sv4crc",".svd",".swf",".swi",".sxc",".sxd",".sxg",".sxi",".sxm",".sxw",".tao",".tar",".tcap",".tcl",".teacher",".tex",".texi",".texinfo",".tfm",".tmo",".torrent",".tpl",".tpt",".tra",".trm",".ttc",".ttf",".twd",".twds",".txd",".txf",".ufd",".ufdl",".umj",".unityweb",".uoml",".ustar",".utz",".vcd",".vcg",".vcx",".vis",".vsd",".vss",".vst",".vsw",".vsdx",".vssx",".vstx",".vssm",".vstm",".vsf",".vxml",".wad",".wbs",".wbxml",".wcm",".wdb",".wks",".wps",".wmd",".wmf",".wmlc",".wmlsc",".wmz",".wpd",".wpl",".wqd",".wri",".wsdl",".wspolicy",".wtb",".x3d",".xap",".xar",".xbap",".xbd",".xdm",".xdp",".xdw",".xenc",".xer",".xfdf",".xfdl",".xht",".xhtml",".xla",".xlb",".xlc",".xlm",".xls",".xlt",".xlw",".xlam",".xlsb",".xlsm",".xlsx",".xltm",".xltx",".xml",".xpdl",".xsl",".xo",".xop",".xpi",".xpr",".xps",".xpw",".xpx",".xslt",".xsm",".xspf",".xul",".zaz",".zip",".zip",".zip",".zir",".zirz",".zmm"]},"text":{"type":["vnd.in3d.3dml","x-asm","x-c","plain","markdown","x-markdown","css","csv","vnd.curl","vnd.curl.dcurl","prs.lines.tag","x-setext","x-fortran","vnd.fmi.flexstor","vnd.fly","vnd.graphviz","html","calendar","vnd.sun.j2me.app-descriptor","x-java-source","javascript","troff","mathml","vnd.curl.mcurl","x-pascal","x-python","richtext","vnd.curl.scurl","sgml","vnd.wap.si","vnd.wap.sl","vnd.in3d.spot","tab-separated-values","uri-list","x-uuencode","x-vcard","x-vcalendar","vnd.wap.wml","vnd.wap.wmlscript"],"extension":[".3dml",".asm",".s",".c",".cc",".cpp",".cxx",".dic",".h",".hh",".conf",".def",".diff",".in",".ksh",".list",".log",".pl",".text",".txt",".md",".markdown",".mdown",".markdn",".md",".markdown",".mdown",".markdn",".css",".csv",".curl",".dcurl",".dsc",".etx",".f",".f77",".f90",".for",".flx",".fly",".gv",".htm",".html",".ics",".ifb",".jad",".java",".js",".man",".me",".ms",".roff",".t",".tr",".mathml",".mml",".mcurl",".p",".pas",".pp",".inc",".py",".rtx",".scurl",".sgm",".sgml",".si",".sl",".spot",".tsv",".uri",".uris",".urls",".uu",".vcf",".vcs",".wml",".wmls"]},"video":{"type":["3gpp2","3gpp","x-ms-asf","x-msvideo","x-f4v","x-fli","x-flv","vnd.fvt","h261","h263","h264","jpm","jpeg","mpeg","vnd.mpegurl","x-m4v","mj2","quicktime","x-sgi-movie","mp4","x-matroska","ogg","webm","vnd.ms-playready.media.pyv","vnd.vivo","mp2t","x-ms-wm","x-ms-wmv","x-ms-wmx","x-ms-wvx"],"extension":[".3g2",".3gp",".asf",".asx",".avi",".f4v",".fli",".flv",".fvt",".h261",".h263",".h264",".jpgm",".jpm",".jpgv",".m1v",".m2v",".mpa",".mpe",".mpeg",".mpg",".m4u",".mxu",".m4v",".mj2",".mjp2",".mov",".qt",".movie",".mp4",".mp4v",".mpg4",".mkv",".ogv",".webm",".pyv",".viv",".ts",".wm",".wmv",".wmx",".wvx"]},"image":{"type":["avif","heic","x-icns","bmp","prs.btif","cgm","x-cmx","vnd.djvu","vnd.dwg","vnd.dxf","vnd.fastbidsheet","x-freehand","vnd.fpx","vnd.fst","g3fax","gif","x-icon","ief","jpeg","pjpeg","vnd.ms-modi","vnd.fujixerox.edmics-mmr","vnd.net-fpx","webp","x-portable-bitmap","x-pict","x-pcx","x-portable-graymap","png","x-portable-anymap","x-portable-pixmap","vnd.adobe.photoshop","x-cmu-raster","x-rgb","vnd.fujixerox.edmics-rlc","svg+xml","tiff","vnd.wap.wbmp","x-xbitmap","vnd.xiff","x-xpixmap","x-xwindowdump","x-adobe-dng","x-sony-arw","x-canon-cr2","x-canon-crw","x-kodak-dcr","x-epson-erf","x-kodak-k25","x-kodak-kdc","x-minolta-mrw","x-nikon-nef","x-olympus-orf","x-pentax-pef","x-fuji-raf","x-panasonic-raw","x-sony-sr2","x-sony-srf","x-sigma-x3f"],"extension":[".avif",".avifs",".heif",".heic",".icns",".bmp",".btif",".cgm",".cmx",".djv",".djvu",".dwg",".dxf",".fbs",".fh",".fh4",".fh5",".fh7",".fhc",".fpx",".fst",".g3",".gif",".ico",".ief",".jpe",".jpeg",".jpg",".pjpg",".jfif",".jfif-tbnl",".jif",".jpe",".jpeg",".jpg",".pjpg",".jfi",".jfif",".jfif-tbnl",".jif",".mdi",".mmr",".npx",".webp",".pbm",".pct",".pic",".pcx",".pgm",".png",".pnm",".ppm",".psd",".ras",".rgb",".rlc",".svg",".svgz",".tif",".tiff",".wbmp",".xbm",".xif",".xpm",".xwd",".dng",".arw",".cr2",".crw",".dcr",".erf",".k25",".kdc",".mrw",".nef",".orf",".pef",".ptx",".raf",".raw",".rw2",".rwl",".sr2",".srf",".x3f"]},"audio":{"type":["3gpp2","mp4","aac","mp4a-latm","aacp","adpcm","basic","vnd.dts","vnd.dts.hd","vnd.nuera.ecelp4800","vnd.nuera.ecelp7470","vnd.nuera.ecelp9600","vnd.digital-winds","midi","aiff","opus","vnd.lucent.voice","mpeg","x-mpegurl","ogg","x-matroska","webm","vnd.ms-playready.media.pya","x-pn-realaudio","x-pn-realaudio-plugin","vnd.wav","x-ms-wax","x-ms-wma","flac","wav","x-wav","vnd.wave","wave","x-pn-wav","x-aiff"],"extension":[".3g2",".mp4",".m4a",".m4b",".m4p",".m4r",".m4v",".mp4v",".3gp",".3g2",".3ga",".3gpa",".3gpp",".3gpp2",".3gp2",".aac",".m4a",".aacp",".adp",".au",".snd",".dts",".dtshd",".ecelp4800",".ecelp7470",".ecelp9600",".eol",".kar",".mid",".midi",".rmi",".aiff",".aif",".aff",".opus",".lvp",".m2a",".m3a",".mp2",".mp2a",".mp3",".mpga",".m3u",".oga",".ogg",".spx",".mka",".weba",".pya",".ra",".ram",".rmp",".wav",".wax",".wma",".flac"]},"chemical":{"type":["x-cdx","x-cif","x-cmdf","x-cml","x-csml","x-xyz"],"extension":[".cdx",".cif",".cmdf",".cml",".csml",".xyz"]},"model":{"type":["vnd.dwf","vnd.gdl","vnd.gtw","iges","mesh","vnd.mts","vrml","vnd.vtu"],"extension":[".dwf",".gdl",".gtw",".iges",".igs",".mesh",".msh",".silo",".mts",".vrml",".wrl",".vtu"]},"message":{"type":["rfc822"],"extension":[".eml",".mht",".mhtml",".mime",".nws"]},"x-conference":{"type":["x-cooltalk"],"extension":[".ice"]},"font":{"type":["woff","woff2","otf"],"extension":[".woff",".woff2",".otf"]}}
+
     try {
-      const folder_id_regex = /\/folders\/([a-zA-Z0-9_-]+)/;
-      const args_got = command_args;
-      var link = 'file';
+      delete cmdARGS.command;
+      /**
+       *  setters
+       * 
+       *    Maps, filters and sets values for the folder scanning operation.
+       * 
+       * @Param: {Object} args - The Object returned from _parse
+       * @Return: {Object}
+       */
+      const setters = (args) => {
+        const variable_dict = {
+          // Return folder hash
+          folder: function (args) {
+            let has_prop = args.hasOwnProperty('folder');
+            if (has_prop) {
+              let regex_match = {
+                folder: args.folder.match(/\/folders\/([a-zA-Z0-9_-]+)/),
+                hash: args.folder.match(/\/?[a-zA-Z0-9_-]{20,}/)
+              };
 
-      // Set link option
-      if (args_got['get-link'] && args_got['get-link'].match(/(file)|(dl)/)) {
-        link = args_got['get-link'];
-      }
+              // Match with folder regex, if not then hash, if not then null;
+              let match = regex_match.folder ? String(String(regex_match.folder).match(regex_match.hash)).replace(/^\//, '') : regex_match.hash ? String(regex_match.hash) : null;
+              return match != null ? match : null;
+            } else {
+              return null;
+            }
+          },
+          // Return links
+          link: function (args) {
+            let has_prop = args.hasOwnProperty('link');
+            if (has_prop) {
+              return String(args.link).toLowerCase().match(/(dl)|(file)/) ? String(args.link) : 'file';
+            } else {
+              return 'link';
+            }
+          },
+          // Get max depth
+          'max-depth' : function (args) {
+            let has_prop = args.hasOwnProperty('max-depth');
+            if (has_prop) {
+              // return only max-depth of 1 if not specified bc appscript timeout
+              let int = parseInt(args['max-depth'])
+              return Number.isNaN(int) || int <= 10 && int >= 0 ? int : 1;
+            } else return 1;
+          },
+          // Get extensions to look for
+          ext: function(args) {
+            let has_prop = args.hasOwnProperty('ext');
+            if (has_prop) {
+              // Split extensions into an array, clean special characters, join in regex
+              let ext = args.ext.split(',').map(ext => ext.toLowerCase().trim());
+              let parsed_exts = ext.map(ext => ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+              let regex_ext = new RegExp(parsed_exts.join('|'));
 
-      // if no folder is specified
-      if (!args_got.folder) {
-        this.stdout.setValue(["Unknown folder: ", args_got.folder]);
-        return;
-      }
+              return regex_ext;
+            } else return /\.\w*$/;
+          },
+          // If starting at parent folder
+          parent: function(args) {
+            let has_prop = args.hasOwnProperty('parent');
+            return has_prop ? true : false;
+          },
+          // Get MIME types to look for
+          // See:
+          // https://developers.google.com/apps-script/reference/drive/folder#searchfoldersparams
+          // https://developers.google.com/apps-script/reference/drive/folder#searchfilesparams
+          MIME: function(args) {
+            let has_prop = args.hasOwnProperty('MIME');
+            if (has_prop) {
+              let keys = args.MIME.split(',');
+              let mimes = Object.keys(MIMETYPES).map(key => {
+                let found_key = keys.some(k => k == key);
+                return found_key ? MIMETYPES[key].extension : null;
+              }).filter(n => n != null);
 
-      // Grab folder hash
-      const folder_id_link_match = args_got.folder.match(folder_id_regex);
-      const hash_id_match = args_got.folder.match(/[a-zA-Z0-9_-]+/);
-
-      if ((!folder_id_link_match || folder_id_link_match.length < 2) && !hash_id_match) {
-        Logger.log("No folder ID found in the provided link.");
-        this.stdout.setValue(["No folder ID found in the provided link."])
-        return;
-      }
-
-      let folder_id = folder_id_link_match ? folder_id_link_match[1] : hash_id_match;
-      var folder = DriveApp.getFolderById(folder_id);
-
-      // If the parent flag is set, traverse to parent folder.
-      if (Object.keys(args_got).includes('parent')) {
-        while (folder.getParents().hasNext()) {
-          folder = folder.getParents().next();
+              // Map extensions of MIMETYPE
+              this.ext = mimes.flat(2);
+              // Return mimetype regex
+              return args.MIME.split(',').map(m => {return `(${m})`}).join('|');
+            }
+          }
         }
 
-        folder = DriveApp.getFolderById(folder.getId());
-        Logger.log(`Got Parent: ${folder.getName()}\t:\t${folder.getId()}`)
+        // Required args, default args.
+        let required = ['folder']
+        let keys = Object.keys(args)
+        let has_required = keys.filter(k => required.includes(k)) || [];
+        let dict = {}
+
+        // If the arguments do not have the required arg exit.
+        if (has_required.length == 0) {
+          this.stdout.setValue([`Required flag(s): ${required.map(f => {return f})} are not found in arguments but are needed.`]);
+          Logger.log(`Required flag(s): ${required.map(f => {return f})} are not found in arguments but are needed`);
+          return null;
+        }
+
+        // Map to dict
+        keys.forEach(key => {
+          let valid_arg = variable_dict[key];
+          // If the argument is a valid arguement then map
+          if (typeof valid_arg == 'function') {
+            dict[`${key}`] = variable_dict[`${key}`](args);
+          } else {
+            this.stdout.setValue([`Arg: ${key} is not valid for this command, skipping...`]);
+            Logger.log(`Arg: ${key} is not valid for this command, skipping...`);
+          }
+        })
+
+        // Check if the required values are not null or undefined
+        let required_values = required.some(key => dict[key] != (null || undefined))
+        if (!required_values) {
+          this.stdout.setValue([`Required flag(s): ${required.map(f => {return f})} values are invalid.`]);
+          Logger.log(`Required flag(s): ${required.map(f => {return f})} values are invalid.`);
+          return null;
+        }
+
+        return dict;
       }
-
-      // If the folder id is invalid or unable to get.
-      if (!folder) {
-        Logger.log(`Folder with ID ${folder_id} not found.`);
-        this.stdout.setValue([`Folder with ID: ${folder_id} not found`]);
-        return;
-      }
-
-      // [//////////////////////////////]
-      var directory_tree = [];
-      let extension_regex;
-
-      // Define file extentions
-      var file_extensions = args_got.ext ? args_got.ext : null;
-      if (file_extensions == null) file_extensions = args_got.MIME ? args_got.MIME : null;
-
-      // If there is a file extension defined
-      if (file_extensions) {
-        const extensions_Array = file_extensions.split(',').map(ext => ext.toLowerCase().trim());
-        const extensions_Escaped = extensions_Array.map(ext => ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-        extension_regex = new RegExp(extensions_Escaped.join('|'));
-      // Otherwise get all files.
-      } else extension_regex = /\.\w*$/;
-
-      // Get files in the folder
-      const folder_files = folder.getFiles();
-      const folder_folders = folder.getFolders();
 
       /**
-       *  get_from_directory
+       *  operation
        * 
-       *    Function to get all files and folder links, id, and content.
-       * 
+       *    Execute command functionality
        */
-      const get_from_directory = (iterator, get_type = 'file', operation = '') => {
-        let buffer = [];
-        while (iterator.hasNext()) {
-
-          const current_F = iterator.next();
-          const current_FName = current_F.getName();
-          const current_FID = current_F.getId();
-          var mime_type = current_F.hasOwnProperty('getMimeType') ? current_F.getMimeType() : null;
-          // Logger.log(`FNAME: ${current_FName} : ${current_FID}\n${current_F.hasOwnProperty('getMimeType')}`)
-
-          // If the type is a folder then get the url, because there is no download url for folders.
-          var current_FURL = link == 'dl' && get_type != 'folder' ? current_F.getDownloadUrl() : current_F.getUrl();
-
-          let tree = {
-            name: current_FName,
-            id: current_FID,
-            url: current_FURL,
-            type: get_type
-          };
-
-          if (operation == 'subdirectory') {
-            if (mime_type == null) mime_type = DriveApp.getFileById(tree.id).getMimeType();
-            get_type = mime_type.match(/(google-apps\.folder)|(google-apps\.shortcut)/) ? 'folder' : 'file';
-            tree.type = get_type;
-
-            // Logger.log(`NAME: ${current_FName} : ${current_FID}\nMIME: ${mime_type}\nTYPE: ${get_type}`)
+      const operation = {
+        commandArgs: '',
+        /**
+         *  folder
+         * 
+         * @Param: {Class Folder}
+         * @Return: {Folder}
+         */
+        folder: function(arg) {
+          return DriveApp.getFolderById(arg);
+        },
+        /**
+         *  link
+         * 
+         * @Param: {Class Folder/Class File}
+         * @Return: {String}
+         */
+        link: function(arg, link) {
+          return link == 'dl' ? arg.getDownloadUrl() : arg.getUrl();
+        },
+        /**
+         *  parent
+         * 
+         * @Param: {Object} arg - The folder object
+         * @Return: {Folder}
+         */
+        parent: function(arg) {
+          let folder = this.folder(arg.folder);
+          while(folder.getParents().hasNext()) {
+            folder = folder.getParents().next();
           }
 
-          if (get_type == 'file' && (current_FName.match(extension_regex) || mime_type.match(extension_regex))) {
-            buffer.push(tree);
-          } else if (get_type == 'folder') {
-            let folder = current_F.getFiles();
-            let folder_token = folder.getContinuationToken();
-            let empty_folder = folder.hasNext();
+          Logger.log(`Got parent folder: ${folder.getName()}:${folder.getId()}`);
+          return folder.getId() == (null || undefined) ? this.folder(arg.folder) : this.folder(folder.getId());
+        },
+        /**
+         *  get_content
+         * 
+         *    retrieves the folder's content. Files, Folders, etc.
+         * 
+         * @Param: {Folder Iterator} fIterator - Folder/File Object iterator
+         * @Return: {Object}
+         */
+        get_content: function(commandArgs, oper = 'folder') {
+          let buffer = [];
+          let hasObject = commandArgs.hasOwnProperty('parentObj') ? true : false;
+          let folder = oper == 'folder' && hasObject ? commandArgs.parentObj.folder_folders : null;
+          let files = oper == 'files' && hasObject ? commandArgs.parentObj.folder_files : null;
+          let fIterator = folder != null ? folder : files != null ? files : commandArgs;
 
-            // Logger.log(`MT: ${empty_folder}\nTREE: ${JSON.stringify(tree, null, 2)}\nMIME: ${mime_type}`)
+          while (fIterator.hasNext()) {
+            const fCurrent = fIterator.next();
+            const fCurrentName = fCurrent.getName();
+            const fCurrentID = fCurrent.getId();
 
-            tree['token'] = folder_token;
-            tree['content'] = [];
+            const mimeType = fCurrent.hasOwnProperty('getMimeType') ? fCurrent.getMimeType() : DriveApp.getFileById(fCurrentID).getMimeType();
+            const link = this.commandArgs.hasOwnProperty('link') == (null || undefined) ? '' : this.commandArgs.link;
+            const fCurrentLink = link && mimeType != null ? this.link(fCurrent, link) : '';
+            const type = mimeType.match(/folder/) ? 'folder' : 'file';
 
-            // if it's an empty folder then skip, otherwise add it.
-            if (operation == 'subdirectory' && empty_folder == false) { 
-              empty_folder = true;
+            // Parse out url link to retrieve drive id.
+            const url = this.link(fCurrent, link);
+            const pathOnly = url.replace(/https:\/\/[^\/]+/, '');
+            const match = pathOnly.match(/[a-zA-Z0-9_-]{20,}\//);
+            const cleanedLink = match ? match[0].replace(/\/$/, '') : ''; 
+
+            const display_link = link && mimeType != null ? type == 'folder' ? `:${String(this.link(fCurrent, link)).match(/\/folders\/([a-zA-Z0-9_-]+)/)[1]}` : `:${cleanedLink}` : '';
+            const display = `${fCurrentName}${mimeType.match(/(folder)|(shortcut)/) ? '/ 📁' : ' 📄'}${display_link}`;
+
+            // Set the variables for the current folder/file being scanned
+            let tree = {
+              name: display,
+              link: fCurrentLink,
+              id: fCurrentID,
+              mime: mimeType,
+
+              type: type,
             }
-            empty_folder ? buffer.push(tree) : null;
-          }
-        }
-        return buffer;
-      }
 
-      // Iterate through parent folder content
-      var folder_contents = get_from_directory(folder_folders, 'folder')
-      var file_contents = get_from_directory(folder_files)
+            if (type == 'file' && mimeType.match(this.commandArgs.MIME)) {
+              buffer.push(tree);
+            } else if (type == 'folder') {
+              folder = fCurrent.getFolders()
+              files = fCurrent.getFiles();
 
-      // Logger.log(get_from_directory(DriveApp.continueFileIterator(folder_files_token)))
+              // Check if it's an empty folder
+              if (folder.hasNext() || files.hasNext()) {
+                folder = files.hasNext() ? files : folder
 
-      // Push parent folder
-      directory_tree.push({
-        type: 'parent',
-        name: `${folder.getName()}:${folder.getId()}`,
-        content: [
-          folder_contents.length > 0 ? { type: 'folder', content: folder_contents.sort() } : null,
-          file_contents.length   > 0 ? { type: 'file',   content: file_contents.sort()   } : null
-        ].filter(nulls => nulls != null)
-      })
+                let token = folder.getContinuationToken();
+                tree['token'] = token;
 
-      var display = 'Append folder hash to this url to peek inside:\nhttps://drive.google.com/drive/folders/\n\nDirectory tree:\n';
-      // Logger.log(JSON.stringify(directory_tree, null, 2))
-
-      // https://tree.nathanfriend.io/
-      directory_tree.forEach(directory => {
-        // Parent Directory name formatting
-        display += `.\n└── ${directory.name}`;
-
-        // Iterate through 'folder' and 'file'
-        directory.content.forEach((subdirectory, index) => {
-
-          // Add each subdirectory or files to the map.
-          subdirectory.content.forEach((subdirectory_contents, subdirectory_contents_index) => {
-            let is_last_content = directory.content.length - 1 == index && subdirectory.content.length - 1 == subdirectory_contents_index;
-            let format = `\n    ${is_last_content ? '└──' : '├──'} `;
-
-            let name_emoji = subdirectory.type == 'folder' ? '/ 📁' : ' 📄';
-            let url = subdirectory.type == 'folder' ? subdirectory_contents.id : subdirectory_contents.url;
-
-            // Add it to display
-            display += `${format}${subdirectory_contents.name}${name_emoji}:${url}`;
-
-            // Return subdirectory files
-            if (subdirectory.type == 'folder') {
-              // Logger.log(`GOING IN: ${subdirectory_contents.name}`)
-              let file_iterator = DriveApp.continueFolderIterator(subdirectory_contents.token);
-              let subfiles = get_from_directory(file_iterator, 'folder', 'subdirectory');
-
-              if (subfiles.length > 0) {
-                subfiles.forEach((file, subfiles_index) => {
-                  let is_folder_or_file = file.type == 'folder' ? '/ 📁' : ' 📄';
-                  let url = file.type == 'folder' ? file.id : file.url;
-                  let subdirectory_files_format = `\n    │    ${subfiles.length - 1 == subfiles_index ? '└──' : '├──'} `;
-
-                  // Add subdirectory files & folders
-                  display += `${subdirectory_files_format}${file.name}${is_folder_or_file}:${url}`;
-                })
-                // Logger.log(JSON.stringify(subfiles, null, 2))
+                buffer.push(tree)
               }
             }
-          })
-        })
-      })
-      Logger.log(display)
+          }
+
+          return buffer;
+        },
+      }
+
+      /**
+       *  walk
+       * 
+       *    walk the directory, and subdirectories
+       * 
+       * @Param: {Object} directory - The directory object to be scanned through
+       * @Param: {String} prefix - The prefix of the directory
+       * @Return: {String}
+       */
+      function walk(directory, prefix = ''){
+        let tree = '';
+        directory.forEach((file, index, numberOfFiles) => { 
+          let fileType = file.type;
+          const parts = index == numberOfFiles.length - 1 ? ["└── ", "    "] : ["├── ", "│   "]
+          tree += `\n${prefix}${parts[0]}${file.name}`
+
+          if (fileType == 'folder') {
+            let token = DriveApp.continueFolderIterator(file.token);
+            let recursive = operation.get_content(token);
+            tree += walk(recursive, `${prefix}${parts[1]}`);
+          }
+        });
+
+        return tree
+      }
+
+      let commandArgs = setters(cmdARGS);
+      if (commandArgs == null) return;
+      // Logger.log(`CMDARGS: ${JSON.stringify(cmdARGS, null, 2)}`)
+      // Logger.log(`COMMANDARGS: ${JSON.stringify(commandArgs, null, 2)}`);
+
+      // Set parent folder and files iterator
+      let parent = commandArgs.parent ? operation.parent(commandArgs) : operation.folder(commandArgs.folder);
+      commandArgs['parentObj'] = {
+        name: parent.getName(),
+        id: parent.getId(),
+        folder_files: parent.getFiles(),
+        folder_folders: parent.getFolders()
+      }
+      // Set command arguments
+      operation.commandArgs = commandArgs;
+
+      // Initial directory folder push
+      console.warn('Getting folders')
+      let folders = operation.get_content(commandArgs);
+      console.warn('Getting files')
+      let files = operation.get_content(commandArgs , 'files');
+      console.warn('Walking directories')
+
+      // Add to display.
+      this.display += `\n└── ${commandArgs.parentObj.name}`
+      this.display += walk(folders.concat(files), '    ');
+
+      Logger.log(this.display)
 
       let this_day = Date.now()
-      let create_file = DriveApp.createFile(`checkdir:${this_day}.txt`, display);
+      let create_file = DriveApp.createFile(`tree:${this_day}.txt`, this.display);
 
       this.stdout.setValue([`=HYPERLINK("${create_file.getUrl()}", "Created file ${create_file.getName()}")`])
     } catch (e) {
-      this.Logs(e.stack, 'ProgCommands:_checkdir');
-      Logger.log(`Whoopsies! Error in _checkdir: ${e.stack}`);
+      this.Logs(e.stack, 'ProgCommands:_tree');
+      Logger.log(`Whoopsies! Error in _tree: ${e.stack}`);
       return [];
     }
   }
@@ -420,12 +526,12 @@ function testLexer () {
         help        Display this help menu and exit
         ping        Recieve a pong!
         whoami      Returns the user running the script.
-        checkdir    Get all contents in a specified directory.
+        tree        Get all contents in a specified directory.
         crypt       Encrypt or decrypt a string.
 
 Type \`<command> --help' to display more information about that command:
          ping --help
-         checkdir --help`})
+         tree --help`})
   )
 
   arg.addCommand('ping',
@@ -436,8 +542,8 @@ Type \`<command> --help' to display more information about that command:
     new Arguments({help: 'Usage: whoami\nReturn the user running the script.'})
   )
 
-  arg.addCommand('checkdir',
-    new Arguments({ flags: ['folder', 'max-depth', 'link', 'ext', 'parent', 'MIME'], help: 'Usage: checkdir [...OPTIONS]\nGet all contents in a specified directory.\n\nOptions:\n\t ext\t Specify file extensions to look for (mp4,mp3,pdf)\n\t MIME\t Specify file MIME types to look for (audio, video, text, model, image, font, application)\n\t max-depth\t print the total for a directory (or file) only if it is N or fewer levels below the command line argument.\n\t link\t Get the links to each file in the folder. Options: (dl, file). (default: file)\n\t folder\t Specify the folder to run the check on.\n\t parent\t Start the scan from the parent folder.\n\nexample usage:\n   checkdir --max-depth 1 --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --ext txt,mp4\n   checkdir --folder 11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0 --MIME audio,text' })
+  arg.addCommand('tree',
+    new Arguments({ flags: ['folder', 'max-depth', 'link', 'ext', 'parent', 'MIME'], help: 'Usage: tree [...OPTIONS]\nGet all contents in a specified directory.\n\nOptions:\n\t ext\t Specify file extensions to look for (mp4,mp3,pdf)\n\t MIME\t Specify file MIME types to look for (audio, video, text, model, image, font, application)\n\t max-depth\t print the total for a directory (or file) only if it is N or fewer levels below the command line argument.\n\t link\t Get/Show the link hashes for each file in the folder. Options: (dl, file).\n\t folder\t Specify the folder to run the check on.\n\t parent\t Start the scan from the parent folder.\n\nexample usage:\n   tree --max-depth 1 --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --ext txt,mp4\n   tree --folder 11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0 --MIME audio,text' })
   )
 
   arg.addCommand('crypt',
@@ -446,10 +552,12 @@ Type \`<command> --help' to display more information about that command:
 
   // const inputString = 'ping --url --host 127.0.0.1';
   // const inputString = 'crypt --algo aes --encrypt "Hello, World!" --key P455W0RD123';
-  const inputString = "checkdir --folder 1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8 --parent --MIME audio";
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --ext .txt,.pdf";
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --parent --MIME audio";
-  // const inputString = "checkdir";
+  // const inputString = "tree --folder 1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8 --parent --MIME audio --max-depth 5";
+  const inputString = "tree --folder 1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8 --parent";
+  // const inputString = "tree --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --ext .txt,.pdf";
+  // const inputString = "tree --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --parent --MIME audio";
+  // const inputString = "tree --folder 108FNUq20U7Pkg_XKVFy8nML8RUJTxO_H"; //// Too long exec
+  // const inputString = "tree";
   // const inputString = 'whoami';
 
 
