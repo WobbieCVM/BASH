@@ -34,7 +34,7 @@ class ArgParse extends Listener {
    */
   parse(inputString) {
     try{
-      this.cli.setValue(['Parsing commands...']);
+      this.stdout.setValue(['Parsing commands...']);
       const args = inputString.trim().split(/\s+/);
       const parsedArgs = {};
 
@@ -71,7 +71,7 @@ class ArgParse extends Listener {
                 parsedArgs.options[currentOpt] = option.type(value);
               } else {
                 if (option.required) {
-                  this.cli.setValue(`Value for ${option.dest} is required.\nSee ${parsedArgs.command} --help`);
+                  this.stdout.setValue(`Value for ${option.dest} is required.\nSee ${parsedArgs.command} --help`);
                 }
 
                 if (option.default !== undefined) {
@@ -87,7 +87,7 @@ class ArgParse extends Listener {
               if (option.required) {
                 // Ensure that the positional argument is present
                 if (!arg) {
-                  this.cli.setValue(`Value for ${option.dest} is required.\nSee ${parsedArgs.command} --help`);
+                  this.stdout.setValue(`Value for ${option.dest} is required.\nSee ${parsedArgs.command} --help`);
                 } else {
                   // Check for specific requirements for sendmail and getuser commands
                   var command_values = {
@@ -99,7 +99,7 @@ class ArgParse extends Listener {
                     }
                   }
                   if (command_values.commands.includes(command) && command_values.values[command].inclues(arg)) {
-                    this.cli.setValue(`Invalid use of option ${arg} for ${parsedArgs.command} command.\nSee ${parsedArgs.command} --help`);
+                    this.stdout.setValue(`Invalid use of option ${arg} for ${parsedArgs.command} command.\nSee ${parsedArgs.command} --help`);
                   } else {
                     parsedArgs.options[option.dest] = option.type(arg);
                   }
@@ -144,7 +144,7 @@ class ProgCommands extends Listener {
     this.command = command.command;
     this.options = command.options || {};
     this.time = time;
-    this.chkdir_stdout_ = ''
+    // this.chkdir_stdout_ = ''
 
     Logger.log(`Command got from the cli: ${this.command}\nWith options: ${JSON.stringify(this.options, null, 2)}`);
 
@@ -167,8 +167,8 @@ class ProgCommands extends Listener {
       },
       // nargs 1
       checkdir: {
-        opts: ['max-depth', 'get-links', 'folder', 'ext', 'parent'],
-        help: `Usage: checkdir [...OPTIONS]\nGet all contents in a specified directory.\n\nOptions:\n\t max-depth\t print the total for a directory (or file) only if it is N or fewer levels below the command line argument.\n\t get-links\t Get the links to each file in the folder. Options: dl, file. (default: file)\n\t folder\t Specify the folder to run the check on.\n\t parent\t Start the scan from the parent folder.\n\nexample usage:\n   checkdir --max-depth 1 --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --ext txt,mp4`,
+        opts: ['max-depth', 'get-links', 'folder', 'ext', 'parent', 'MIME'],
+        help: `Usage: checkdir [...OPTIONS]\nGet all contents in a specified directory.\n\nOptions:\n\t ext\t Specify file extensions to look for (mp4,mp3,pdf)\n\t MIME\t Specify file MIME types to look for (audio, video, text, model, image, font, application)\n\t max-depth\t print the total for a directory (or file) only if it is N or fewer levels below the command line argument.\n\t get-links\t Get the links to each file in the folder. Options: dl, file. (default: file)\n\t folder\t Specify the folder to run the check on.\n\t parent\t Start the scan from the parent folder.\n\nexample usage:\n   checkdir --max-depth 1 --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --ext txt,mp4\n   checkdir --folder https://drive.google.com/drive/folders/11jWW8TV0dWD1wGChpucKLCXS-BuwikZ0?usp=drive_link --MIME audio,text`,
         shorthelp: `Get all contents in a specified directory.`
       },
       crypt: {
@@ -191,11 +191,11 @@ class ProgCommands extends Listener {
    */
   execute() {
     try {
-      this.cli.setValue([`Executing commands...`])
+      this.stdout.setValue([`Executing commands...`])
       const validCommands = Object.keys(this.default);
 
       if (this.command === 'help' || this.options.help) {
-        this.cli.setValue([this._helpMenu()])
+        this.stdout.setValue([this._helpMenu()])
       } else if (validCommands.includes(this.command)) {
 
         // Assign the function to the func property
@@ -212,29 +212,30 @@ class ProgCommands extends Listener {
 
         // Check if the command requires positional arguments
         if (this._requiresPositionalArguments(this.command)) {
-          this.cli.setValue([`Checking args...`])
+          this.stdout.setValue([`Checking args...`])
           var command = this.default.checkdir.opts.some(option => this.options[option]);
           // var injectCommand = this.default.inject.opts.some(option => this.options[option]);
           const positionalArg = this.options.arg1 || command // || injectCommand;
 
           if (!positionalArg) {
-            this.cli.setValue([`Positional argument is required for the ${this.command} command.\nSee \`${this.command} --help' for help`])
+            this.stdout.setValue([`Positional argument is required for the ${this.command} command.\nSee \`${this.command} --help' for help`])
             return;
           }
         }
 
         // Call the assigned function
-        this.cli.setValue([`Executing command...`]);
+        this.stdout.setValue([`Executing command...`]);
 
         if (this.command == 'checkdir') {
-          this.default[this.command].func();
+          let directory = this.default[this.command].func();
           let this_day = Date.now()
-          DriveApp.createFile(`checkdir:${this_day}.txt`, this.chkdir_stdout_);
+          DriveApp.createFile(`checkdir:${this_day}.txt`, directory);
+          // DriveApp.createFile(`checkdir:${this_day}.txt`, this.chkdir_stdout_);
         } else {
           this.default[this.command].func();
         }
       } else {
-        this.cli.setValue([this._helpMenu()])
+        this.stdout.setValue([this._helpMenu()])
       }
     } catch (e) {
       this.Logs(e.stack, 'ProgCommands:execute')
@@ -248,7 +249,7 @@ class ProgCommands extends Listener {
    */
   _helpMenu() {
     try {
-      this.cli.setValue(['Showing help...'])
+      this.stdout.setValue(['Showing help...'])
       if (this.subargs && this.subargs.length > 0) {
         const specifiedCommand = this.subargs[0];
 
@@ -287,7 +288,7 @@ class ProgCommands extends Listener {
    */
   _validateOptions() {
     try{
-      this.cli.setValue(['Validating args...'])
+      this.stdout.setValue(['Validating args...'])
       const acceptedFlags = this.default[this.command].opts;
 
       if (acceptedFlags) {
@@ -295,7 +296,7 @@ class ProgCommands extends Listener {
 
         parsedFlags.forEach(flag => {
           if (!acceptedFlags.includes(flag)) {
-            this.cli.setValue([`Invalid flag: ${flag} for command ${this.command}.\nSee \`${this.command} --help' for help`])
+            this.stdout.setValue([`Invalid flag: ${flag} for command ${this.command}.\nSee \`${this.command} --help' for help`])
           }
         });
       }
@@ -323,7 +324,7 @@ class ProgCommands extends Listener {
   _ping() {
     try{
       const time = parseInt(Date.now());
-      this.cli.setValue([`Pong! With a time of: ${(parseInt(time) - parseInt(this.time)) / 1000}ms`])
+      this.stdout.setValue([`Pong! With a time of: ${(parseInt(time) - parseInt(this.time)) / 1000}ms`])
     } catch (e) {
       this.Logs(e.stack, 'ProgCommands:_ping')
       Logger.log(`Whoopsies! Error in _ping: ${e.stack}`)
@@ -337,7 +338,7 @@ class ProgCommands extends Listener {
    */
   _whoami() {
     try{
-      this.cli.setValue([String(this.effective_user)]);
+      this.stdout.setValue([String(this.effective_user)]);
     } catch (e) {
       this.Logs(e.stack, 'ProgCommands:_whoami')
       Logger.log(`Whoopsies! Error in _whoami: ${e.stack}`)
@@ -349,152 +350,207 @@ class ProgCommands extends Listener {
    * 
    *    Check a directory for files
    */
-  _checkdir(folder_id, depth = 0) {
+  _checkdir(folder_id) {
     try {
       const folder_id_regex = /\/folders\/([a-zA-Z0-9_-]+)/;
-      // const file_id_regex = /\/file\/d\/([a-zA-Z0-9_-]+)/;
+      // const file_id_regex = /\/d\/([a-zA-Z0-9_-]+)/;
       const args_got = this.options;
       var link = 'file';
 
-      if (args_got['get-link']) {
-        if (!args_got['get-link'].match(/(file)|(dl)/)) {
-          link = 'file';
-        } else {
-          link = args_got['get-link'];
-        }
+      // Set link option
+      if (args_got['get-link'] && args_got['get-link'].match(/(file)|(dl)/)) {
+        link = args_got['get-link'];
       }
 
+      // if no folder is specified
       if (!args_got.folder) {
-        this.cli.setValue(["Unknown folder: ", args_got.folder]);
+        this.stdout.setValue(["Unknown folder: ", args_got.folder]);
         return;
       }
 
       if (!folder_id) {
-        const folder_id_match = args_got.folder.match(folder_id_regex);
-        if (!folder_id_match || folder_id_match.length < 2) {
+        const folder_id_link_match = args_got.folder.match(folder_id_regex);
+        const hash_id_match = args_got.folder.match(/[a-zA-Z0-9_-]+/);
+
+        if ((!folder_id_link_match || folder_id_link_match.length < 2) && !hash_id_match) {
           Logger.log("No folder ID found in the provided link.");
-          this.cli.setValue(["No folder ID found in the provided link."])
+          this.stdout.setValue(["No folder ID found in the provided link."])
           return;
         }
 
-        folder_id = folder_id_match[1];
+        folder_id = folder_id_link_match ? folder_id_link_match[1] : hash_id_match;
       }
 
       var folder = DriveApp.getFolderById(folder_id);
 
+      // If the parent flag is set, traverse to parent folder.
       if (Object.keys(args_got).includes('parent')) {
-        var parentFolder = folder;
-        // let tree = [];
-
-        // tree.push({
-        //   name: parentFolder.getName(),
-        //   id: parentFolder.getId()
-        // })
-
-        while (parentFolder.getParents().hasNext()) {
-          parentFolder = parentFolder.getParents().next();
-          // tree.push({
-          //   name: parentFolder.getName(),
-          //   id: parentFolder.getId()
-          // })
-          // Logger.log(`IN: ${parentFolder.getName()}\nID: ${parentFolder.getId()}`)
+        while (folder.getParents().hasNext()) {
+          folder = folder.getParents().next();
         }
 
-        var folder = DriveApp.getFolderById(parentFolder.getId());
-
-        // if (tree.length == 1) {
-        //   Logger.log(`Utmost parent folder ID: ${parentFolder.getId()}`);
-        //   var folder = DriveApp.getFolderById(parentFolder.getId());
-        // } else {
-        //   var folder = DriveApp.getFolderById(String(parentFolder.getId()))
-        // }
+        folder = DriveApp.getFolderById(folder.getId());
+        Logger.log(`Got Parent: ${folder.getName()}\t:\t${folder.getId()}`)
       }
 
+      // If the folder id is invalid or unable to get.
       if (!folder) {
         Logger.log(`Folder with ID ${folder_id} not found.`);
-        this.cli.setValue([`Folder with ID: ${folder_id} not found`]);
+        this.stdout.setValue([`Folder with ID: ${folder_id} not found`]);
         return;
       }
 
-      const folder_files = folder.getFiles();
+      // [//////////////////////////////]
+      var directory_tree = [];
+      let extension_regex;
 
-      let header_ = `\n${folder.getName()}:${String(folder.getUrl()).match(folder_id_regex)[1]}\n`;
-      this.chkdir_stdout_ += `${header_}${'#'.repeat(header_.length)}\n`;
+      // Define file extentions
+      var file_extensions = args_got.ext ? args_got.ext : null;
+      if (file_extensions == null) file_extensions = args_got.MIME ? args_got.MIME : null;
 
-      const file_extensions = args_got.ext ? args_got.ext : null;
-      let ext_regex;
-
+      // If there is a file extension defined
       if (file_extensions) {
-        const extensionsArray = file_extensions.split(",").map(ext => ext.trim());
-        const escapedExtensions = extensionsArray.map(ext => ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        ext_regex = new RegExp(escapedExtensions.join("|"));
-      } else {
-        ext_regex = /\.\w*$/;
-      }
+        const extensions_Array = file_extensions.split(',').map(ext => ext.toLowerCase().trim());
+        const extensions_Escaped = extensions_Array.map(ext => ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        extension_regex = new RegExp(extensions_Escaped.join('|'));
+      // Otherwise get all files.
+      } else extension_regex = /\.\w*$/;
 
-      while (folder_files.hasNext()) {
-        const file = folder_files.next();
-        const file_name = file.getName();
-        // const file_url = link == 'dl' ? file.getDownloadUrl() : String(file.getUrl()).match(file_id_regex)[1];
-        const file_url = link == 'dl' ? file.getDownloadUrl() : file.getUrl();
+      // Get files in the folder
+      const folder_files = folder.getFiles();
+      const folder_folders = folder.getFolders();
 
-        if (file_name.match(ext_regex)) {
-          this.chkdir_stdout_ += `${file_name}:${file_url}\n`;
+      /**
+       *  get_from_directory
+       * 
+       *    Function to get all files and folder links, id, and content.
+       * 
+       */
+      const get_from_directory = (iterator, get_type = 'file', operation = '') => {
+        let buffer = [];
+        while (iterator.hasNext()) {
+
+          const current_F = iterator.next();
+          const current_FName = current_F.getName();
+          const current_FID = current_F.getId();
+          var mime_type = current_F.hasOwnProperty('getMimeType') ? current_F.getMimeType() : null;
+          // Logger.log(`FNAME: ${current_FName} : ${current_FID}\n${current_F.hasOwnProperty('getMimeType')}`)
+
+          // If the type is a folder then get the url, because there is no download url for folders.
+          var current_FURL = link == 'dl' && get_type != 'folder' ? current_F.getDownloadUrl() : current_F.getUrl();
+
+          let tree = {
+            name: current_FName,
+            id: current_FID,
+            url: current_FURL,
+            type: get_type
+          };
+
+          if (operation == 'subdirectory') {
+            if (mime_type == null) mime_type = DriveApp.getFileById(tree.id).getMimeType();
+            get_type = mime_type.match(/(google-apps\.folder)|(google-apps\.shortcut)/) ? 'folder' : 'file';
+            tree.type = get_type;
+
+            // Logger.log(`NAME: ${current_FName} : ${current_FID}\nMIME: ${mime_type}\nTYPE: ${get_type}`)
+          }
+
+          if (get_type == 'file' && (current_FName.match(extension_regex) || mime_type.match(extension_regex))) {
+            buffer.push(tree);
+          } else if (get_type == 'folder') {
+            let folder = current_F.getFiles();
+            let folder_token = folder.getContinuationToken();
+            let empty_folder = folder.hasNext();
+
+            // Logger.log(`MT: ${empty_folder}\nTREE: ${JSON.stringify(tree, null, 2)}\nMIME: ${mime_type}`)
+
+            tree['token'] = folder_token;
+            tree['content'] = [];
+
+            // if it's an empty folder then skip, otherwise add it.
+            if (operation == 'subdirectory' && empty_folder == false) { 
+              empty_folder = true;
+            }
+            empty_folder ? buffer.push(tree) : null;
+          }
         }
+        return buffer;
       }
 
-      const subfolders = folder.getFolders();
-      if (depth < parseInt(args_got['max-depth'] || 100)) {
-        while (subfolders.hasNext()) {
-          const subfolder = subfolders.next();
-          this._checkdir(subfolder.getId(), depth + 1);
-        }
-      }
+      // Iterate through parent folder content
+      var folder_contents = get_from_directory(folder_folders, 'folder')
+      console.error('')
+      var file_contents = get_from_directory(folder_files)
 
-      Logger.log(this.chkdir_stdout_);
+      // Logger.log(get_from_directory(DriveApp.continueFileIterator(folder_files_token)))
+
+      // Push parent folder
+      directory_tree.push({
+        type: 'parent',
+        name: `${folder.getName()}:${folder.getId()}`,
+        content: [
+          folder_contents.length > 0 ? { type: 'folder', content: folder_contents.sort() } : null,
+          file_contents.length   > 0 ? { type: 'file',   content: file_contents.sort()   } : null
+        ].filter(nulls => nulls != null)
+      })
+
+      var display = 'Append folder hash to this url to peek inside:\nhttps://drive.google.com/drive/folders/\n\nDirectory tree:\n';
+      // Logger.log(JSON.stringify(directory_tree, null, 2))
+
+      // https://tree.nathanfriend.io/
+      directory_tree.forEach(directory => {
+        // Parent Directory name formatting
+        display += `.\n└── ${directory.name}`;
+
+        // Iterate through 'folder' and 'file'
+        directory.content.forEach((subdirectory, index) => {
+
+          // Add each subdirectory or files to the map.
+          subdirectory.content.forEach((subdirectory_contents, subdirectory_contents_index) => {
+            let is_last_content = directory.content.length - 1 == index && subdirectory.content.length - 1 == subdirectory_contents_index;
+            let format = `\n    ${is_last_content ? '└──' : '├──'} `;
+
+            let name_emoji = subdirectory.type == 'folder' ? '/ 📁' : ' 📄';
+            let url = subdirectory.type == 'folder' ? subdirectory_contents.id : subdirectory_contents.url;
+
+            // Add it to display
+            display += `${format}${subdirectory_contents.name}${name_emoji}:${url}`;
+
+            // Return subdirectory files
+            if (subdirectory.type == 'folder') {
+              // Logger.log(`GOING IN: ${subdirectory_contents.name}`)
+              let file_iterator = DriveApp.continueFolderIterator(subdirectory_contents.token);
+              let subfiles = get_from_directory(file_iterator, 'folder', 'subdirectory');
+
+              if (subfiles.length > 0) {
+                subfiles.forEach((file, subfiles_index) => {
+                  let is_folder_or_file = file.type == 'folder' ? '/ 📁' : ' 📄';
+                  let url = file.type == 'folder' ? file.id : file.url;
+                  let subdirectory_files_format = `\n    │    ${subfiles.length - 1 == subfiles_index ? '└──' : '├──'} `;
+
+                  // Add subdirectory files & folders
+                  display += `${subdirectory_files_format}${file.name}${is_folder_or_file}:${url}`;
+                })
+                // Logger.log(JSON.stringify(subfiles, null, 2))
+              }
+            }
+          })
+        })
+      })
+
+      Logger.log(display)
+      return display
     } catch (e) {
       this.Logs(e.stack, 'ProgCommands:_checkdir');
       Logger.log(`Whoopsies! Error in _checkdir: ${e.stack}`);
       return [];
     }
   }
-
-  /**
-   *  _crypt
-   * 
-   *    Encrypt or Decrypt a string.
-   */
-  _crypt(){
-
-  }
-
-
-
-
-  // _poison() {
-  //   const values = String(this.e.value);
-
-  //   if (Object.keys(this.options).includes('func')){
-  //     let func = values.match(/\[BOF\](.*?)\[EOF\]/, '')[1];
-  //     this.cache.put('exec', String(func), 21600);
-  //   }
-  // }
 }
 
-function a() {
-  const parser = new ArgParse();
 
-  parser.addCommand("help", [
-    new Argument("arg1"),
-  ]);
 
-  parser.addCommand("ping", [
-    new Argument("arg1"),
-  ]);
-
-  parser.addCommand("whoami", [
-    new Argument("arg1"),
-  ]);
+function test() {
+  const parser = new ArgParse
 
   parser.addCommand("checkdir", [
     new Argument("arg1"),
@@ -509,34 +565,20 @@ function a() {
     new Argument("arg10"),
   ]);
 
-  parser.addCommand("crypt", [
-    new Argument("arg1"),
-    new Argument("arg2"),
-    new Argument("arg3"),
-    new Argument("arg4"),
-    new Argument("arg5")
-  ])
+  const input = '└─│├';
 
-  // parser.addCommand("inject", [
-  //   new Argument("arg1"),
-  //   new Argument("arg2")
-  // ]);
-
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/0B2ay4JgKNoPeQlR0M2NmTE81VUU?resourcekey=0-k8Hi-jQx0gtf_HZXsBnuLA&usp=drive_link";
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/1WcrF78qumEoC6FlPQ_AgW9yd9Tf4kBLQ?usp=drive_link --get-link dl";
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/0B1IrvDSvOU2zR0VvZHEtLVFiSnM --get-link dl";
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/0B1IrvDSvOU2zR0VvZHEtLVFiSnM --get-link dl --parent";
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8?usp=drive_link --get-link dl --parent";
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/0Bzv_SGk2WEdHRElmdFRubzdrbDA --get-link dl --parent"; // bad
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/0Bzv_SGk2WEdHRElmdFRubzdrbDA --parent"; // bad
-  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/0B3DfYHxscpQfbm9TMWFTb29uSVU?resourcekey=0-2T1YAYk8D136iSu95FP5VAs --get-link dl --ext mp4,avi,flv,mov"; // bad
-  const inputString = "checkdir --folder https://drive.google.com/drive/folders/1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8?usp=drive_link --get-link dl --ext mp4,avi,flv,mov"; // bad
-
-  // const inputString = "inject --func [BOF]testing() { Logger.log(`Hello, World!`);[EOF]";
-  // Logger.log(inputString.match(/\[BOF\](.*?)\[EOF\]/, '')[1])
-
+  const inputString = "checkdir --folder https://drive.google.com/drive/folders/1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8?usp=drive_link --MIME audio --parent";
+  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/1L21GiYc2l2zOEY2RWQi2EtY-jfISwGZ8?usp=drive_link";
+  // const inputString = "checkdir --folder https://drive.google.com/drive/folders/1PebYcpr47qagmUr-JpkMkaqgKPTQbOZM?usp=sharing --parent";
+  // const inputString = "checkdir --folder 1PebYcpr47qagmUr-JpkMkaqgKPTQbOZM";
 
   const parsedArgs = parser.parse(inputString);
   const executor = new ProgCommands(parsedArgs);
   executor.execute()
+
+  // Array.from(input).forEach(char => {
+  //   Logger.log(`CHAR: ${char} : ${char.charCodeAt(0)}`);
+  // })
+
+  // Logger.log(`${String.fromCodePoint(9492)}${String.fromCodePoint(9472)}`)
 }
